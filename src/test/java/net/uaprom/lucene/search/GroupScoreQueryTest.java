@@ -67,6 +67,20 @@ public class GroupScoreQueryTest extends LuceneTestCase {
         doc.add(new IntField("company_id", 2, Field.Store.NO));
         doc.add(newTextField("name", "Super-mega name name", Field.Store.NO));
         writer.addDocument(doc);
+        writer.commit();
+        // write to a new segment
+        doc = new Document();
+        doc.add(new IntField("company_id", 2, Field.Store.NO));
+        doc.add(newTextField("name", "Super-mega name in new segment", Field.Store.NO));
+        writer.addDocument(doc);
+        doc = new Document();
+        doc.add(new IntField("company_id", 1, Field.Store.NO));
+        doc.add(newTextField("name", "Simple test name", Field.Store.NO));
+        writer.addDocument(doc);
+        doc = new Document();
+        doc.add(new IntField("company_id", 3, Field.Store.NO));
+        doc.add(newTextField("name", "Test name", Field.Store.NO));
+        writer.addDocument(doc);
 
         DirectoryReader reader = writer.getReader();
         writer.close();
@@ -87,7 +101,7 @@ public class GroupScoreQueryTest extends LuceneTestCase {
         bindings.add("_pos", new GroupPositionValueSource());
         Rescorer rescorer = new GroupPosRescorer("company_id",
                                                  expr.getValueSource(bindings));
-        TopDocs rescoredHits = rescorer.rescore(searcher, hits, 3);
+        TopDocs rescoredHits = rescorer.rescore(searcher, hits, 5);
         for (ScoreDoc rHit : rescoredHits.scoreDocs) {
             System.out.println(rHit.doc);
             System.out.println(rHit.score);
@@ -209,12 +223,12 @@ public class GroupScoreQueryTest extends LuceneTestCase {
                 for (ScoreDoc doc : docs) {
                     // valueSource.getValues(valueSourceContext, docReaderContexts.get(doc.doc))
                     // float newScore = doc.score / (pos + 1);
-                    float newScore = doc.score * leafFunctionValues.get(docLeafContexts.get(doc.doc)).floatVal(doc.doc);
+                    AtomicReaderContext leafContext = docLeafContexts.get(doc.doc);
+                    float newScore = doc.score * leafFunctionValues.get(leafContext).floatVal(doc.doc - leafContext.docBase);
                     rescoredHits[i] = new ScoreDoc(doc.doc, newScore);
                     i++;
                 }
             }
-            System.out.println(i);
 
             Arrays.sort(rescoredHits, scoreComparator);
 
